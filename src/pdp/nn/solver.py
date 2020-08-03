@@ -30,21 +30,28 @@ class SATProblem(object):
 
         if batch_replication > 1:
             self._replication_mask_tuple = self._compute_batch_replication_map(data_batch[1], batch_replication)
-            self._graph_map, self._batch_variable_map, self._batch_function_map, self._edge_feature, self._meta_data, _ = self._replicate_batch(data_batch, batch_replication)
+            self._graph_map, self._batch_variable_map, self._batch_function_map, self._edge_feature, self._meta_data, _ = self._replicate_batch(
+                data_batch, batch_replication)
         else:
             self._graph_map, self._batch_variable_map, self._batch_function_map, self._edge_feature, self._meta_data, _ = data_batch
-        
+
         self._variable_num = self._batch_variable_map.size()[0]
         self._function_num = self._batch_function_map.size()[0]
         self._edge_num = self._graph_map.size()[1]
 
         self._vf_mask_tuple = self._compute_variable_function_map(self._graph_map, self._batch_variable_map,
-                self._batch_function_map, self._edge_feature)
+                                                                  self._batch_function_map, self._edge_feature)
         self._batch_mask_tuple = self._compute_batch_map(self._batch_variable_map, self._batch_function_map)
-        self._graph_mask_tuple = self._compute_graph_mask(self._graph_map, self._batch_variable_map, self._batch_function_map)
-        self._pos_mask_tuple = self._compute_graph_mask(self._graph_map, self._batch_variable_map, self._batch_function_map, (self._edge_feature == 1).squeeze(1).float())
-        self._neg_mask_tuple = self._compute_graph_mask(self._graph_map, self._batch_variable_map, self._batch_function_map, (self._edge_feature == -1).squeeze(1).float())
-        self._signed_mask_tuple = self._compute_graph_mask(self._graph_map, self._batch_variable_map, self._batch_function_map, self._edge_feature.squeeze(1))
+        self._graph_mask_tuple = self._compute_graph_mask(self._graph_map, self._batch_variable_map,
+                                                          self._batch_function_map)
+        self._pos_mask_tuple = self._compute_graph_mask(self._graph_map, self._batch_variable_map,
+                                                        self._batch_function_map,
+                                                        (self._edge_feature == 1).squeeze(1).float())
+        self._neg_mask_tuple = self._compute_graph_mask(self._graph_map, self._batch_variable_map,
+                                                        self._batch_function_map,
+                                                        (self._edge_feature == -1).squeeze(1).float())
+        self._signed_mask_tuple = self._compute_graph_mask(self._graph_map, self._batch_variable_map,
+                                                           self._batch_function_map, self._edge_feature.squeeze(1))
 
         self._active_variables = torch.ones(self._variable_num, 1, device=self._device)
         self._active_functions = torch.ones(self._function_num, 1, device=self._device)
@@ -62,13 +69,20 @@ class SATProblem(object):
         variable_num = batch_variable_map.size()[0]
         function_num = batch_function_map.size()[0]
 
-        ind = torch.arange(batch_replication, dtype=torch.int32, device=self._device).unsqueeze(1).repeat(1, edge_num).view(1, -1)
-        graph_map = graph_map.repeat(1, batch_replication) + ind.repeat(2, 1) * torch.tensor([[variable_num], [function_num]], dtype=torch.int32, device=self._device)
+        ind = torch.arange(batch_replication, dtype=torch.int32, device=self._device).unsqueeze(1).repeat(1,
+                                                                                                          edge_num).view(
+            1, -1)
+        graph_map = graph_map.repeat(1, batch_replication) + ind.repeat(2, 1) * torch.tensor(
+            [[variable_num], [function_num]], dtype=torch.int32, device=self._device)
 
-        ind = torch.arange(batch_replication, dtype=torch.int32, device=self._device).unsqueeze(1).repeat(1, variable_num).view(1, -1)
+        ind = torch.arange(batch_replication, dtype=torch.int32, device=self._device).unsqueeze(1).repeat(1,
+                                                                                                          variable_num).view(
+            1, -1)
         batch_variable_map = batch_variable_map.repeat(batch_replication) + ind * batch_size
 
-        ind = torch.arange(batch_replication, dtype=torch.int32, device=self._device).unsqueeze(1).repeat(1, function_num).view(1, -1)
+        ind = torch.arange(batch_replication, dtype=torch.int32, device=self._device).unsqueeze(1).repeat(1,
+                                                                                                          function_num).view(
+            1, -1)
         batch_function_map = batch_function_map.repeat(batch_replication) + ind * batch_size
 
         edge_feature = edge_feature.repeat(batch_replication, 1)
@@ -87,14 +101,16 @@ class SATProblem(object):
         y_ind = torch.arange(batch_size, dtype=torch.int64, device=self._device).repeat(batch_replication)
         ind = torch.stack([x_ind, y_ind])
         all_ones = torch.ones(batch_size * batch_replication, device=self._device)
-        
+
         if self._device.type == 'cuda':
-            mask = torch.cuda.sparse.FloatTensor(ind, all_ones, 
-                torch.Size([batch_size * batch_replication, batch_size]), device=self._device)
+            mask = torch.cuda.sparse.FloatTensor(ind, all_ones,
+                                                 torch.Size([batch_size * batch_replication, batch_size]),
+                                                 device=self._device)
         else:
-            mask = torch.sparse.FloatTensor(ind, all_ones, 
-                torch.Size([batch_size * batch_replication, batch_size]), device=self._device)
-        
+            mask = torch.sparse.FloatTensor(ind, all_ones,
+                                            torch.Size([batch_size * batch_replication, batch_size]),
+                                            device=self._device)
+
         mask_transpose = mask.transpose(0, 1)
         return (mask, mask_transpose)
 
@@ -105,15 +121,15 @@ class SATProblem(object):
         all_ones = torch.ones(edge_num, device=self._device)
 
         if self._device.type == 'cuda':
-            mask = torch.cuda.sparse.FloatTensor(graph_map.long(), all_ones, 
-                torch.Size([variable_num, function_num]), device=self._device)
-            signed_mask = torch.cuda.sparse.FloatTensor(graph_map.long(), edge_feature.squeeze(1), 
-                torch.Size([variable_num, function_num]), device=self._device)
+            mask = torch.cuda.sparse.FloatTensor(graph_map.long(), all_ones,
+                                                 torch.Size([variable_num, function_num]), device=self._device)
+            signed_mask = torch.cuda.sparse.FloatTensor(graph_map.long(), edge_feature.squeeze(1),
+                                                        torch.Size([variable_num, function_num]), device=self._device)
         else:
-            mask = torch.sparse.FloatTensor(graph_map.long(), all_ones, 
-                torch.Size([variable_num, function_num]), device=self._device)
-            signed_mask = torch.sparse.FloatTensor(graph_map.long(), edge_feature.squeeze(1), 
-                torch.Size([variable_num, function_num]), device=self._device)
+            mask = torch.sparse.FloatTensor(graph_map.long(), all_ones,
+                                            torch.Size([variable_num, function_num]), device=self._device)
+            signed_mask = torch.sparse.FloatTensor(graph_map.long(), edge_feature.squeeze(1),
+                                                   torch.Size([variable_num, function_num]), device=self._device)
 
         mask_transpose = mask.transpose(0, 1)
         signed_mask_transpose = signed_mask.transpose(0, 1)
@@ -133,15 +149,15 @@ class SATProblem(object):
         function_sparse_ind = torch.stack([function_range, batch_function_map.long()])
 
         if self._device.type == 'cuda':
-            variable_mask = torch.cuda.sparse.FloatTensor(variable_sparse_ind, variable_all_ones, 
-                torch.Size([variable_num, batch_size]), device=self._device)
-            function_mask = torch.cuda.sparse.FloatTensor(function_sparse_ind, function_all_ones, 
-                torch.Size([function_num, batch_size]), device=self._device)
+            variable_mask = torch.cuda.sparse.FloatTensor(variable_sparse_ind, variable_all_ones,
+                                                          torch.Size([variable_num, batch_size]), device=self._device)
+            function_mask = torch.cuda.sparse.FloatTensor(function_sparse_ind, function_all_ones,
+                                                          torch.Size([function_num, batch_size]), device=self._device)
         else:
-            variable_mask = torch.sparse.FloatTensor(variable_sparse_ind, variable_all_ones, 
-                torch.Size([variable_num, batch_size]), device=self._device)
-            function_mask = torch.sparse.FloatTensor(function_sparse_ind, function_all_ones, 
-                torch.Size([function_num, batch_size]), device=self._device)
+            variable_mask = torch.sparse.FloatTensor(variable_sparse_ind, variable_all_ones,
+                                                     torch.Size([variable_num, batch_size]), device=self._device)
+            function_mask = torch.sparse.FloatTensor(function_sparse_ind, function_all_ones,
+                                                     torch.Size([function_num, batch_size]), device=self._device)
 
         variable_mask_transpose = variable_mask.transpose(0, 1)
         function_mask_transpose = function_mask.transpose(0, 1)
@@ -162,15 +178,15 @@ class SATProblem(object):
         function_sparse_ind = torch.stack([graph_map[1, :].long(), edge_num_range])
 
         if self._device.type == 'cuda':
-            variable_mask = torch.cuda.sparse.FloatTensor(variable_sparse_ind, edge_values, 
-                torch.Size([variable_num, edge_num]), device=self._device)
-            function_mask = torch.cuda.sparse.FloatTensor(function_sparse_ind, edge_values, 
-                torch.Size([function_num, edge_num]), device=self._device)
+            variable_mask = torch.cuda.sparse.FloatTensor(variable_sparse_ind, edge_values,
+                                                          torch.Size([variable_num, edge_num]), device=self._device)
+            function_mask = torch.cuda.sparse.FloatTensor(function_sparse_ind, edge_values,
+                                                          torch.Size([function_num, edge_num]), device=self._device)
         else:
-            variable_mask = torch.sparse.FloatTensor(variable_sparse_ind, edge_values, 
-                torch.Size([variable_num, edge_num]), device=self._device)
-            function_mask = torch.sparse.FloatTensor(function_sparse_ind, edge_values, 
-                torch.Size([function_num, edge_num]), device=self._device)
+            variable_mask = torch.sparse.FloatTensor(variable_sparse_ind, edge_values,
+                                                     torch.Size([variable_num, edge_num]), device=self._device)
+            function_mask = torch.sparse.FloatTensor(function_sparse_ind, edge_values,
+                                                     torch.Size([function_num, edge_num]), device=self._device)
 
         variable_mask_transpose = variable_mask.transpose(0, 1)
         function_mask_transpose = function_mask.transpose(0, 1)
@@ -179,7 +195,7 @@ class SATProblem(object):
 
     def _peel(self):
         "Implements the peeling algorithm."
-        
+
         vf_map, vf_map_transpose, signed_vf_map, _ = self._vf_mask_tuple
 
         variable_degree = torch.mm(vf_map, self._active_functions)
@@ -194,7 +210,8 @@ class SATProblem(object):
             single_functions = (torch.mm(vf_map_transpose, single_variables) > 0).float() * self._active_functions
             degree_delta = torch.mm(vf_map, single_functions) * self._active_variables
             signed_degree_delta = torch.mm(signed_vf_map, single_functions) * self._active_variables
-            self._solution[single_variables[:, 0] == 1] = (signed_variable_degree[single_variables[:, 0] == 1, 0].sign() + 1) / 2.0
+            self._solution[single_variables[:, 0] == 1] = (signed_variable_degree[
+                                                               single_variables[:, 0] == 1, 0].sign() + 1) / 2.0
 
             variable_degree -= degree_delta
             signed_variable_degree -= signed_degree_delta
@@ -247,7 +264,6 @@ class SATProblem(object):
             # Detect and de-activate the UNSAT examples
             conflict_variables = (variable_eval.abs() != input_num).float() * self._active_variables
             if torch.sum(conflict_variables) > 0:
-
                 # Detect the UNSAT examples
                 unsat_examples = torch.mm(b_variable_mask_transpose, conflict_variables)
                 self._is_sat[unsat_examples[:, 0] >= 1] = 0
@@ -322,19 +338,22 @@ class PropagatorDecimatorSolverBase(nn.Module):
         self.load_state_dict(torch.load(os.path.join(import_path_base, self._name)))
 
     def forward(self, init_state,
-        graph_map, batch_variable_map, batch_function_map, edge_feature, 
-        meta_data, is_training=True, iteration_num=1, check_termination=None, simplify=True, batch_replication=1):
-        
+                graph_map, batch_variable_map, batch_function_map, edge_feature,
+                meta_data, is_training=True, iteration_num=1, check_termination=None, simplify=True,
+                batch_replication=1):
+
         init_propagator_state, init_decimator_state = init_state
         batch_replication = 1 if is_training else batch_replication
-        sat_problem = SATProblem((graph_map, batch_variable_map, batch_function_map, edge_feature, meta_data, None), self._device, batch_replication)
+        sat_problem = SATProblem((graph_map, batch_variable_map, batch_function_map, edge_feature, meta_data, None),
+                                 self._device, batch_replication)
 
         if simplify and not is_training:
             sat_problem.simplify()
 
         if self._propagator is not None and self._decimator is not None:
-            propagator_state, decimator_state = self._forward_core(init_propagator_state, init_decimator_state, 
-                sat_problem, iteration_num, is_training, check_termination)
+            propagator_state, decimator_state = self._forward_core(init_propagator_state, init_decimator_state,
+                                                                   sat_problem, iteration_num, is_training,
+                                                                   check_termination)
         else:
             decimator_state = None
             propagator_state = None
@@ -346,13 +365,15 @@ class PropagatorDecimatorSolverBase(nn.Module):
             prediction = self._local_search(prediction, sat_problem, batch_replication)
 
         prediction = self._update_solution(prediction, sat_problem)
-        
+
         if batch_replication > 1:
-            prediction, propagator_state, decimator_state = self._deduplicate(prediction, propagator_state, decimator_state, sat_problem)
+            prediction, propagator_state, decimator_state = self._deduplicate(prediction, propagator_state,
+                                                                              decimator_state, sat_problem)
 
         return (prediction, (propagator_state, decimator_state))
 
-    def _forward_core(self, init_propagator_state, init_decimator_state, sat_problem, iteration_num, is_training, check_termination):
+    def _forward_core(self, init_propagator_state, init_decimator_state, sat_problem, iteration_num, is_training,
+                      check_termination):
 
         propagator_state = init_propagator_state
         decimator_state = init_decimator_state
@@ -364,11 +385,12 @@ class PropagatorDecimatorSolverBase(nn.Module):
 
         for _ in torch.arange(iteration_num, dtype=torch.int32, device=self._device):
 
-            propagator_state = self._propagator(propagator_state, decimator_state, sat_problem, is_training, active_mask)
+            propagator_state = self._propagator(propagator_state, decimator_state, sat_problem, is_training,
+                                                active_mask)
             decimator_state = self._decimator(decimator_state, propagator_state, sat_problem, is_training, active_mask)
 
             sat_problem._edge_mask = torch.mm(sat_problem._graph_mask_tuple[1], sat_problem._active_variables) * \
-                torch.mm(sat_problem._graph_mask_tuple[3], sat_problem._active_functions)
+                                     torch.mm(sat_problem._graph_mask_tuple[3], sat_problem._active_functions)
 
             if sat_problem._edge_mask.sum() < sat_problem._edge_num:
                 decimator_state += (sat_problem._edge_mask,)
@@ -390,7 +412,7 @@ class PropagatorDecimatorSolverBase(nn.Module):
 
         if prediction[0] is not None:
             variable_solution = sat_problem._active_variables * prediction[0] + \
-                (1.0 - sat_problem._active_variables) * sat_problem._solution.unsqueeze(1)
+                                (1.0 - sat_problem._active_variables) * sat_problem._solution.unsqueeze(1)
             sat_problem._solution[sat_problem._active_variables[:, 0] == 1] = \
                 variable_solution[sat_problem._active_variables[:, 0] == 1, 0]
         else:
@@ -417,16 +439,21 @@ class PropagatorDecimatorSolverBase(nn.Module):
         flag = torch.mm(sat_problem._graph_mask_tuple[1], flag)
         new_propagator_state = ()
         for x in propagator_state:
-            new_propagator_state += ((flag * x).view(sat_problem._batch_replication, sat_problem._edge_num / sat_problem._batch_replication, -1).sum(dim=0),)
+            new_propagator_state += (
+            (flag * x).view(sat_problem._batch_replication, sat_problem._edge_num / sat_problem._batch_replication,
+                            -1).sum(dim=0),)
 
         new_decimator_state = ()
         for x in decimator_state:
-            new_decimator_state += ((flag * x).view(sat_problem._batch_replication, sat_problem._edge_num / sat_problem._batch_replication, -1).sum(dim=0),)
+            new_decimator_state += (
+            (flag * x).view(sat_problem._batch_replication, sat_problem._edge_num / sat_problem._batch_replication,
+                            -1).sum(dim=0),)
 
         function_prediction = None
         if prediction[1] is not None:
             flag = torch.mm(sat_problem._batch_mask_tuple[2], batch_flag)
-            function_prediction = (flag * prediction[1]).view(sat_problem._batch_replication, -1).sum(dim=0).unsqueeze(1)
+            function_prediction = (flag * prediction[1]).view(sat_problem._batch_replication, -1).sum(dim=0).unsqueeze(
+                1)
 
         return (variable_prediction, function_prediction), new_propagator_state, new_decimator_state
 
@@ -434,28 +461,32 @@ class PropagatorDecimatorSolverBase(nn.Module):
         "Implements the Walk-SAT algorithm for post-processing."
 
         assignment = (prediction[0] > 0.5).float()
-        assignment = sat_problem._active_variables * (2*assignment - 1.0)
+        assignment = sat_problem._active_variables * (2 * assignment - 1.0)
 
         sat_problem._edge_mask = torch.mm(sat_problem._graph_mask_tuple[1], sat_problem._active_variables) * \
-            torch.mm(sat_problem._graph_mask_tuple[3], sat_problem._active_functions)
+                                 torch.mm(sat_problem._graph_mask_tuple[3], sat_problem._active_functions)
 
         for _ in range(self._local_search_iterations):
             unsat_examples, unsat_functions = self._compute_energy(assignment, sat_problem)
             unsat_examples = (unsat_examples > 0).float()
 
             if batch_replication > 1:
-                compact_unsat_examples = 1 - (torch.mm(sat_problem._replication_mask_tuple[1], 1 - unsat_examples) > 0).float()
+                compact_unsat_examples = 1 - (
+                            torch.mm(sat_problem._replication_mask_tuple[1], 1 - unsat_examples) > 0).float()
                 if compact_unsat_examples.sum() == 0:
                     break
             elif unsat_examples.sum() == 0:
                 break
 
             delta_energy = self._compute_energy_diff(assignment, sat_problem)
-            max_delta_ind = util.sparse_argmax(-delta_energy.squeeze(1), sat_problem._batch_mask_tuple[0], device=self._device)
+            max_delta_ind = util.sparse_argmax(-delta_energy.squeeze(1), sat_problem._batch_mask_tuple[0],
+                                               device=self._device)
 
             unsat_variables = torch.mm(sat_problem._vf_mask_tuple[0], unsat_functions) * sat_problem._active_variables
-            unsat_variables = (unsat_variables > 0).float() * torch.rand([sat_problem._variable_num, 1], device=self._device)
-            random_ind = util.sparse_argmax(unsat_variables.squeeze(1), sat_problem._batch_mask_tuple[0], device=self._device)
+            unsat_variables = (unsat_variables > 0).float() * torch.rand([sat_problem._variable_num, 1],
+                                                                         device=self._device)
+            random_ind = util.sparse_argmax(unsat_variables.squeeze(1), sat_problem._batch_mask_tuple[0],
+                                            device=self._device)
 
             coin = (torch.rand(sat_problem._batch_size, device=self._device) > self._epsilon).long()
             max_ind = coin * max_delta_ind + (1 - coin) * random_ind
@@ -495,18 +526,23 @@ class PropagatorDecimatorSolverBase(nn.Module):
         unsat_functions = (aggregated_assignment == -function_degree).float() * sat_problem._active_functions
         return torch.mm(sat_problem._batch_mask_tuple[3], unsat_functions), unsat_functions
 
-    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication=1):
+    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized,
+                       batch_replication=1):
         "Initializes the propgator and the decimator messages in each direction."
 
         if self._propagator is None:
             init_propagator_state = None
         else:
-            init_propagator_state = self._propagator.get_init_state(graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication)
-        
+            init_propagator_state = self._propagator.get_init_state(graph_map, batch_variable_map, batch_function_map,
+                                                                    edge_feature, graph_feat, randomized,
+                                                                    batch_replication)
+
         if self._decimator is None:
             init_decimator_state = None
         else:
-            init_decimator_state = self._decimator.get_init_state(graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication)
+            init_decimator_state = self._decimator.get_init_state(graph_map, batch_variable_map, batch_function_map,
+                                                                  edge_feature, graph_feat, randomized,
+                                                                  batch_replication)
 
         return init_propagator_state, init_decimator_state
 
@@ -517,23 +553,25 @@ class PropagatorDecimatorSolverBase(nn.Module):
 class NeuralPropagatorDecimatorSolver(PropagatorDecimatorSolverBase):
     "Implements a fully neural PDP SAT solver with both the propagator and the decimator being neural."
 
-    def __init__(self, device, name, edge_dimension, meta_data_dimension, 
-                propagator_dimension, decimator_dimension, 
-                mem_hidden_dimension, agg_hidden_dimension, mem_agg_hidden_dimension, prediction_dimension,
-                variable_classifier=None, function_classifier=None, dropout=0, 
-                local_search_iterations=0, epsilon=0.05):
-
+    def __init__(self, device, name, edge_dimension, meta_data_dimension,
+                 propagator_dimension, decimator_dimension,
+                 mem_hidden_dimension, agg_hidden_dimension, mem_agg_hidden_dimension, prediction_dimension,
+                 variable_classifier=None, function_classifier=None, dropout=0,
+                 local_search_iterations=0, epsilon=0.05):
         super(NeuralPropagatorDecimatorSolver, self).__init__(
-            device=device, name=name, 
-            propagator=pdp_propagate.NeuralMessagePasser(device, edge_dimension, decimator_dimension, 
-                meta_data_dimension, propagator_dimension, mem_hidden_dimension,
-                mem_agg_hidden_dimension, agg_hidden_dimension, dropout), 
-            decimator=pdp_decimate.NeuralDecimator(device, propagator_dimension, meta_data_dimension, 
-                decimator_dimension, mem_hidden_dimension,
-                mem_agg_hidden_dimension, agg_hidden_dimension, edge_dimension, dropout),
-            predictor=pdp_predict.NeuralPredictor(device, decimator_dimension, prediction_dimension, 
-                edge_dimension, meta_data_dimension, mem_hidden_dimension, agg_hidden_dimension, 
-                mem_agg_hidden_dimension, variable_classifier, function_classifier),
+            device=device, name=name,
+            propagator=pdp_propagate.NeuralMessagePasser(device, edge_dimension, decimator_dimension,
+                                                         meta_data_dimension, propagator_dimension,
+                                                         mem_hidden_dimension,
+                                                         mem_agg_hidden_dimension, agg_hidden_dimension, dropout),
+            decimator=pdp_decimate.NeuralDecimator(device, propagator_dimension, meta_data_dimension,
+                                                   decimator_dimension, mem_hidden_dimension,
+                                                   mem_agg_hidden_dimension, agg_hidden_dimension, edge_dimension,
+                                                   dropout),
+            predictor=pdp_predict.NeuralPredictor(device, decimator_dimension, prediction_dimension,
+                                                  edge_dimension, meta_data_dimension, mem_hidden_dimension,
+                                                  agg_hidden_dimension,
+                                                  mem_agg_hidden_dimension, variable_classifier, function_classifier),
             local_search_iterations=local_search_iterations, epsilon=epsilon)
 
 
@@ -543,21 +581,22 @@ class NeuralPropagatorDecimatorSolver(PropagatorDecimatorSolverBase):
 class NeuralSurveyPropagatorSolver(PropagatorDecimatorSolverBase):
     "Implements a PDP solver with the SP propgator and a neural decimator."
 
-    def __init__(self, device, name, edge_dimension, meta_data_dimension, 
-            decimator_dimension, 
-            mem_hidden_dimension, agg_hidden_dimension, mem_agg_hidden_dimension, prediction_dimension,
-            variable_classifier=None, function_classifier=None, dropout=0,
-            local_search_iterations=0, epsilon=0.05):
-
+    def __init__(self, device, name, edge_dimension, meta_data_dimension,
+                 decimator_dimension,
+                 mem_hidden_dimension, agg_hidden_dimension, mem_agg_hidden_dimension, prediction_dimension,
+                 variable_classifier=None, function_classifier=None, dropout=0,
+                 local_search_iterations=0, epsilon=0.05):
         super(NeuralSurveyPropagatorSolver, self).__init__(
-            device=device, name=name, 
-            propagator=pdp_propagate.SurveyPropagator(device, decimator_dimension, include_adaptors=True), 
-            decimator=pdp_decimate.NeuralDecimator(device, (3, 1), meta_data_dimension, 
-                decimator_dimension, mem_hidden_dimension,
-                mem_agg_hidden_dimension, agg_hidden_dimension, edge_dimension, dropout),
-            predictor=pdp_predict.NeuralPredictor(device, decimator_dimension, prediction_dimension, 
-                edge_dimension, meta_data_dimension, mem_hidden_dimension, agg_hidden_dimension, 
-                mem_agg_hidden_dimension, variable_classifier, function_classifier),
+            device=device, name=name,
+            propagator=pdp_propagate.SurveyPropagator(device, decimator_dimension, include_adaptors=True),
+            decimator=pdp_decimate.NeuralDecimator(device, (3, 1), meta_data_dimension,
+                                                   decimator_dimension, mem_hidden_dimension,
+                                                   mem_agg_hidden_dimension, agg_hidden_dimension, edge_dimension,
+                                                   dropout),
+            predictor=pdp_predict.NeuralPredictor(device, decimator_dimension, prediction_dimension,
+                                                  edge_dimension, meta_data_dimension, mem_hidden_dimension,
+                                                  agg_hidden_dimension,
+                                                  mem_agg_hidden_dimension, variable_classifier, function_classifier),
             local_search_iterations=local_search_iterations, epsilon=epsilon)
 
 
@@ -568,12 +607,13 @@ class SurveyPropagatorSolver(PropagatorDecimatorSolverBase):
     "Implements the classical SP-guided decimation solver via the PDP framework."
 
     def __init__(self, device, name, tolerance, t_max, local_search_iterations=0, epsilon=0.05):
-
         super(SurveyPropagatorSolver, self).__init__(
-            device=device, name=name, 
-            propagator=pdp_propagate.SurveyPropagator(device, decimator_dimension=1, include_adaptors=False), 
-            decimator=pdp_decimate.SequentialDecimator(device, message_dimension=(3, 1), 
-                scorer=pdp_predict.SurveyScorer(device, message_dimension=1, include_adaptors=False), tolerance=tolerance, t_max=t_max),
+            device=device, name=name,
+            propagator=pdp_propagate.SurveyPropagator(device, decimator_dimension=1, include_adaptors=False),
+            decimator=pdp_decimate.SequentialDecimator(device, message_dimension=(3, 1),
+                                                       scorer=pdp_predict.SurveyScorer(device, message_dimension=1,
+                                                                                       include_adaptors=False),
+                                                       tolerance=tolerance, t_max=t_max),
             predictor=pdp_predict.IdentityPredictor(device=device, random_fill=True),
             local_search_iterations=local_search_iterations, epsilon=epsilon)
 
@@ -585,7 +625,6 @@ class WalkSATSolver(PropagatorDecimatorSolverBase):
     "Implements the classical Walk-SAT solver via the PDP framework."
 
     def __init__(self, device, name, iteration_num, epsilon=0.05):
-
         super(WalkSATSolver, self).__init__(
             device=device, name=name, propagator=None, decimator=None,
             predictor=pdp_predict.IdentityPredictor(device=device, random_fill=True),
@@ -599,13 +638,13 @@ class ReinforceSurveyPropagatorSolver(PropagatorDecimatorSolverBase):
     "Implements the classical Reinforce solver via the PDP framework."
 
     def __init__(self, device, name, pi=0.1, decimation_probability=0.5, local_search_iterations=0, epsilon=0.05):
-
         super(ReinforceSurveyPropagatorSolver, self).__init__(
-            device=device, name=name, 
-            propagator=pdp_propagate.SurveyPropagator(device, decimator_dimension=1, include_adaptors=False, pi=pi), 
-            decimator=pdp_decimate.ReinforceDecimator(device, 
-                scorer=pdp_predict.SurveyScorer(device, message_dimension=1, include_adaptors=False, pi=pi), 
-                decimation_probability=decimation_probability),
+            device=device, name=name,
+            propagator=pdp_propagate.SurveyPropagator(device, decimator_dimension=1, include_adaptors=False, pi=pi),
+            decimator=pdp_decimate.ReinforceDecimator(device,
+                                                      scorer=pdp_predict.SurveyScorer(device, message_dimension=1,
+                                                                                      include_adaptors=False, pi=pi),
+                                                      decimation_probability=decimation_probability),
             predictor=pdp_predict.ReinforcePredictor(device=device),
             local_search_iterations=local_search_iterations, epsilon=epsilon)
 
@@ -616,22 +655,29 @@ class ReinforceSurveyPropagatorSolver(PropagatorDecimatorSolverBase):
 class NeuralSequentialDecimatorSolver(PropagatorDecimatorSolverBase):
     "Implements a PDP solver with a neural propgator and the sequential decimator."
 
-    def __init__(self, device, name, edge_dimension, meta_data_dimension, 
-                propagator_dimension, decimator_dimension, 
-                mem_hidden_dimension, agg_hidden_dimension, mem_agg_hidden_dimension, 
-                classifier_dimension, dropout, tolerance, t_max, 
-                local_search_iterations=0, epsilon=0.05):
-
+    def __init__(self, device, name, edge_dimension, meta_data_dimension,
+                 propagator_dimension, decimator_dimension,
+                 mem_hidden_dimension, agg_hidden_dimension, mem_agg_hidden_dimension,
+                 classifier_dimension, dropout, tolerance, t_max,
+                 local_search_iterations=0, epsilon=0.05):
         super(NeuralSequentialDecimatorSolver, self).__init__(
-            device=device, name=name, 
-            propagator=pdp_propagate.NeuralMessagePasser(device, edge_dimension, decimator_dimension, 
-                meta_data_dimension, propagator_dimension, mem_hidden_dimension,
-                mem_agg_hidden_dimension, agg_hidden_dimension, dropout), 
-            decimator=pdp_decimate.SequentialDecimator(device, message_dimension=(3, 1), 
-                scorer=pdp_predict.NeuralPredictor(device, decimator_dimension, 1, 
-                    edge_dimension, meta_data_dimension, mem_hidden_dimension, agg_hidden_dimension, 
-                    mem_agg_hidden_dimension, variable_classifier=util.PerceptronTanh(decimator_dimension, 
-                    classifier_dimension, 1), function_classifier=None), 
-                tolerance=tolerance, t_max=t_max),
+            device=device, name=name,
+            propagator=pdp_propagate.NeuralMessagePasser(device, edge_dimension, decimator_dimension,
+                                                         meta_data_dimension, propagator_dimension,
+                                                         mem_hidden_dimension,
+                                                         mem_agg_hidden_dimension, agg_hidden_dimension, dropout),
+            decimator=pdp_decimate.SequentialDecimator(device, message_dimension=(3, 1),
+                                                       scorer=pdp_predict.NeuralPredictor(device, decimator_dimension,
+                                                                                          1,
+                                                                                          edge_dimension,
+                                                                                          meta_data_dimension,
+                                                                                          mem_hidden_dimension,
+                                                                                          agg_hidden_dimension,
+                                                                                          mem_agg_hidden_dimension,
+                                                                                          variable_classifier=util.PerceptronTanh(
+                                                                                              decimator_dimension,
+                                                                                              classifier_dimension, 1),
+                                                                                          function_classifier=None),
+                                                       tolerance=tolerance, t_max=t_max),
             predictor=pdp_predict.IdentityPredictor(device=device, random_fill=True),
             local_search_iterations=local_search_iterations, epsilon=epsilon)
