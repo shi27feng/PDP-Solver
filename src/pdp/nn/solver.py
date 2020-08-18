@@ -13,11 +13,11 @@ from pdp.nn import pdp_propagate, pdp_decimate, pdp_predict, util
 
 
 ###############################################################
-### The Problem Class
+#                     The Problem Class                       #
 ###############################################################
 
 class SATProblem(object):
-    "The class that encapsulates a batch of CNF problem instances."
+    """The class that encapsulates a batch of CNF problem instances."""
 
     def __init__(self, data_batch, device, batch_replication=1):
         self._device = device
@@ -440,14 +440,14 @@ class PropagatorDecimatorSolverBase(nn.Module):
         new_propagator_state = ()
         for x in propagator_state:
             new_propagator_state += (
-            (flag * x).view(sat_problem._batch_replication, sat_problem._edge_num / sat_problem._batch_replication,
-                            -1).sum(dim=0),)
+                (flag * x).view(sat_problem._batch_replication, sat_problem._edge_num / sat_problem._batch_replication,
+                                -1).sum(dim=0),)
 
         new_decimator_state = ()
         for x in decimator_state:
             new_decimator_state += (
-            (flag * x).view(sat_problem._batch_replication, sat_problem._edge_num / sat_problem._batch_replication,
-                            -1).sum(dim=0),)
+                (flag * x).view(sat_problem._batch_replication, sat_problem._edge_num / sat_problem._batch_replication,
+                                -1).sum(dim=0),)
 
         function_prediction = None
         if prediction[1] is not None:
@@ -472,7 +472,7 @@ class PropagatorDecimatorSolverBase(nn.Module):
 
             if batch_replication > 1:
                 compact_unsat_examples = 1 - (
-                            torch.mm(sat_problem._replication_mask_tuple[1], 1 - unsat_examples) > 0).float()
+                        torch.mm(sat_problem._replication_mask_tuple[1], 1 - unsat_examples) > 0).float()
                 if compact_unsat_examples.sum() == 0:
                     break
             elif unsat_examples.sum() == 0:

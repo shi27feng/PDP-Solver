@@ -2,10 +2,11 @@
 # Licensed under the MIT license. See LICENSE.md file in the project root for full license information.
 
 # pdp_predict.py : Defines various predictors and scorers for the PDP framework.
+from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as fn
 
 from pdp.nn import util
 
@@ -16,7 +17,10 @@ from pdp.nn import util
 
 
 class NeuralPredictor(nn.Module):
-    "Implements the neural predictor."
+    """Implements the neural predictor."""
+
+    def _forward_unimplemented(self, *input: Any) -> None:
+        pass
 
     def __init__(self, device, decimator_dimension, prediction_dimension, 
         edge_dimension, meta_data_dimension, mem_hidden_dimension, agg_hidden_dimension, mem_agg_hidden_dimension,
@@ -160,7 +164,7 @@ class SurveyScorer(nn.Module):
 
         if self._include_adaptors:
             function_message = self._projector(message_state[1])
-            function_message[:, 0] = F.sigmoid(function_message[:, 0])
+            function_message[:, 0] = fn.sigmoid(function_message[:, 0])
             function_message[:, 1] = torch.sign(function_message[:, 1])
         else:
             function_message = message_state[1]

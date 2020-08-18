@@ -8,38 +8,43 @@ Main script to run a trained PDP solver against a test dataset.
 # in the project root for full license information.
 
 import argparse
-import yaml, os, logging, sys
-import numpy as np
-import torch
 from datetime import datetime
 
-import dimacs2json
+import logging
+import numpy as np
+import os
+import sys
+import torch
+import yaml
 
+import dimacs2json
 from pdp.trainer import SatFactorGraphTrainer
 
 
 def run(config, logger, output):
-    "Runs the prediction engine."
-    
+    """Runs the prediction engine."""
+
     np.random.seed(config['random_seed'])
     torch.manual_seed(config['random_seed'])
 
     if config['verbose']:
         logger.info("Building the computational graph...")
 
-    predicter = SatFactorGraphTrainer(config=config, use_cuda=not config['cpu_mode'], logger=logger)
+    predictor = SatFactorGraphTrainer(config=config, use_cuda=not config['cpu_mode'], logger=logger)
 
     if config['verbose']:
         logger.info("Starting the prediction phase...")
 
-    predicter._counter = 0
+    predictor._counter = 0
     if output == '':
-        predicter.predict(test_list=config['test_path'], out_file=sys.stdout, import_path_base=config['model_path'], 
-            post_processor=predicter._post_process_predictions, batch_replication=config['batch_replication'])
+        predictor.predict(test_list=config['test_path'], out_file=sys.stdout, import_path_base=config['model_path'],
+                          post_processor=predictor._post_process_predictions,
+                          batch_replication=config['batch_replication'])
     else:
         with open(output, 'w') as file:
-            predicter.predict(test_list=config['test_path'], out_file=file, import_path_base=config['model_path'], 
-                post_processor=predicter._post_process_predictions, batch_replication=config['batch_replication'])
+            predictor.predict(test_list=config['test_path'], out_file=file, import_path_base=config['model_path'],
+                              post_processor=predictor._post_process_predictions,
+                              batch_replication=config['batch_replication'])
 
 
 if __name__ == '__main__':
@@ -51,8 +56,10 @@ if __name__ == '__main__':
     parser.add_argument('-z', '--batch_size', help='Batch size', type=int, default=5000)
     parser.add_argument('-m', '--max_cache_size', help='Maximum cache size', type=int, default=100000)
     parser.add_argument('-l', '--test_batch_limit', help='Memory limit for mini-batches', type=int, default=40000000)
-    parser.add_argument('-w', '--local_search_iteration', help='Number of iterations for post-processing local search', type=int, default=100)
-    parser.add_argument('-e', '--epsilon', help='Epsilon probablity for post-processing local search', type=float, default=0.5)
+    parser.add_argument('-w', '--local_search_iteration', help='Number of iterations for post-processing local search',
+                        type=int, default=100)
+    parser.add_argument('-e', '--epsilon', help='Epsilon probablity for post-processing local search', type=float,
+                        default=0.5)
     parser.add_argument('-v', '--verbose', help='Verbose', action='store_true')
     parser.add_argument('-c', '--cpu_mode', help='Run on CPU', action='store_true')
     parser.add_argument('-d', '--dimacs', help='The input folder contains DIMACS files', action='store_true')
@@ -75,7 +82,7 @@ if __name__ == '__main__':
         if args['verbose']:
             logger.info("Converting DIMACS files into JSON...")
         temp_file_name = 'temp_problem_file.json'
-        
+
         if os.path.isfile(args['test_path']):
             head, _ = os.path.split(args['test_path'])
             temp_file_name = os.path.join(head, temp_file_name)

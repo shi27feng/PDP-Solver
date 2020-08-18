@@ -3,19 +3,17 @@
 
 # factor_graph_input_pipeline.py : Defines the input pipeline for the PDP framework.
 
-import linecache, json
 import collections
-import numpy as np
+import json
+import linecache
 
+import numpy as np
 import torch
 import torch.utils.data as data
 
-from os import listdir
-from os.path import isfile, join
-
 
 class DynamicBatchDivider(object):
-    "Implements the dynamic batching process."
+    """Implements the dynamic batching process."""
 
     def __init__(self, limit, hidden_dim):
         self.limit = limit
@@ -78,7 +76,7 @@ class DynamicBatchDivider(object):
 
 
 class FactorGraphDataset(data.Dataset):
-    "Implements a PyTorch Dataset class for reading and parsing CNFs in the JSON format from disk."
+    """Implements a PyTorch Dataset class for reading and parsing CNFs in the JSON format from disk."""
 
     def __init__(self, input_file, limit, hidden_dim, max_cache_size=100000, generator=None, epoch_size=0, batch_replication=1):
 
@@ -136,7 +134,7 @@ class FactorGraphDataset(data.Dataset):
         return (variable_num, function_num, graph_map, edge_feature, None, float(input_data[3]), misc_data)
 
     def dag_collate_fn(self, input_data):
-        "Torch dataset loader collation function for factor graph input."
+        """Torch dataset loader collation function for factor graph input."""
 
         vn, fn, gm, ef, gf, l, md = zip(*input_data)
 
@@ -189,7 +187,7 @@ class FactorGraphDataset(data.Dataset):
     @staticmethod
     def get_loader(input_file, limit, hidden_dim, batch_size, shuffle, num_workers,
                     max_cache_size=100000, use_cuda=True, generator=None, epoch_size=0, batch_replication=1):
-        "Return the torch dataset loader object for the input."
+        """Return the torch dataset loader object for the input."""
 
         dataset = FactorGraphDataset(
             input_file=input_file,
