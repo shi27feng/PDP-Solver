@@ -85,7 +85,7 @@ class NeuralMessagePasser(nn.Module):
 
         function_state = mask * self._variable_aggregator(
             decimator_variable_state, sat_problem._edge_feature, variable_mask, variable_mask_transpose, edge_mask) + (
-                                     1 - mask) * function_state
+                                 1 - mask) * function_state
 
         function_state = fn.dropout(function_state, p=self._drop_out, training=is_training)
 
@@ -97,7 +97,7 @@ class NeuralMessagePasser(nn.Module):
 
         variable_state = mask * self._function_aggregator(
             decimator_function_state, sat_problem._edge_feature, function_mask, function_mask_transpose, edge_mask) + (
-                                     1 - mask) * variable_state
+                                 1 - mask) * variable_state
 
         variable_state = fn.dropout(variable_state, p=self._drop_out, training=is_training)
 
@@ -192,7 +192,7 @@ class SurveyPropagator(nn.Module):
         function_state = mask * self.safe_exp(aggregated_variable_state) + (1 - mask) * function_state[:, 0].unsqueeze(
             1)
 
-        ## functions --> variables
+        # functions --> variables
 
         if self._include_adaptors:
             decimator_function_state = self._variable_input_projector(decimator_function_state)
@@ -215,7 +215,8 @@ class SurveyPropagator(nn.Module):
         same_sign += self.safe_log(1.0 - self._pi * (external_force == sat_problem._edge_feature).float())
 
         opposite_sign = 0.5 * (1 - sat_problem._edge_feature) * pos + 0.5 * (1 + sat_problem._edge_feature) * neg
-        # The opposite sign edge aggregation does not include the current edge by definition, therefore no need for subtraction.
+        # The opposite sign edge aggregation does not include the current edge by definition, therefore no need for
+        # subtraction.
         opposite_sign += self.safe_log(1.0 - self._pi * (external_force == -sat_problem._edge_feature).float())
 
         dont_care = same_sign + opposite_sign
@@ -255,6 +256,6 @@ class SurveyPropagator(nn.Module):
                                               device=self._device)
             function_state[:, 1] = 0
 
-        return (variable_state, function_state)
+        return variable_state, function_state
 
 ###############################################################

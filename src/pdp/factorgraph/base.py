@@ -53,14 +53,14 @@ class FactorGraphTrainerBase:
         self._model_list = [self._set_device(model) for model in self._build_graph(self._config)]
 
     def _build_graph(self, config):
-        "Builds the forward computational graph."
+        """Builds the forward computational graph."""
 
         raise NotImplementedError("Subclass must implement abstract method")
 
     # pylint: disable=unused-argument
     def _compute_loss(self, model, loss, prediction, label, graph_map, batch_variable_map,
                       batch_function_map, edge_feature, meta_data):
-        "Computes the loss function."
+        """Computes the loss function."""
 
         return loss(prediction, label)
 
