@@ -5,21 +5,24 @@ Define various decimators for the PDP framework.
 # Copyright (c) Microsoft. All rights reserved.
 # Licensed under the MIT license. See LICENSE.md file
 # in the project root for full license information.
+from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from pdp.nn import util
 
 
 ###############################################################
-### The Decimator Classes
+#                    The Decimator Classes                    #
 ###############################################################
 
 
 class NeuralDecimator(nn.Module):
     "Implements a neural decimator."
+
+    def _forward_unimplemented(self, *input: Any) -> None:
+        pass
 
     def __init__(self, device, message_dimension, meta_data_dimension, hidden_dimension, mem_hidden_dimension,
                  mem_agg_hidden_dimension, agg_hidden_dimension, edge_dimension, dropout):
@@ -86,13 +89,16 @@ class NeuralDecimator(nn.Module):
 
         return variable_state, function_state
 
-    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication):
+    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized,
+                       batch_replication):
 
         edge_num = graph_map.size(1) * batch_replication
 
         if randomized:
-            variable_state = 2.0*torch.rand(edge_num, self._hidden_dimension, dtype=torch.float32, device=self._device) - 1.0
-            function_state = 2.0*torch.rand(edge_num, self._hidden_dimension, dtype=torch.float32, device=self._device) - 1.0
+            variable_state = 2.0 * torch.rand(edge_num, self._hidden_dimension, dtype=torch.float32,
+                                              device=self._device) - 1.0
+            function_state = 2.0 * torch.rand(edge_num, self._hidden_dimension, dtype=torch.float32,
+                                              device=self._device) - 1.0
         else:
             variable_state = torch.zeros(edge_num, self._hidden_dimension, dtype=torch.float32, device=self._device)
             function_state = torch.zeros(edge_num, self._hidden_dimension, dtype=torch.float32, device=self._device)
@@ -176,11 +182,13 @@ class SequentialDecimator(nn.Module):
 
         return message_state
 
-    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication):
+    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized,
+                       batch_replication):
         self._previous_function_state = None
         self._counters = None
 
-        return self._scorer.get_init_state(graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication)
+        return self._scorer.get_init_state(graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat,
+                                           randomized, batch_replication)
 
 
 ###############################################################
@@ -201,7 +209,7 @@ class ReinforceDecimator(nn.Module):
 
     def forward(self, init_state, message_state, sat_problem, is_training, active_mask=None):
         variable_state, function_state = message_state
-        
+
         if active_mask is not None and self._previous_function_state is not None and sat_problem._active_variables.sum() > 0:
             function_diff = (self._previous_function_state - message_state[1][:, 0]).abs().unsqueeze(1)
 
@@ -233,7 +241,8 @@ class ReinforceDecimator(nn.Module):
 
         return variable_state, function_state
 
-    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication):
+    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized,
+                       batch_replication):
 
         edge_num = graph_map.size(1) * batch_replication
         self._previous_function_state = None
@@ -243,8 +252,10 @@ class ReinforceDecimator(nn.Module):
             function_state = torch.rand(edge_num, self._variable_message_dim, dtype=torch.float32, device=self._device)
             function_state[:, 1] = 0
         else:
-            variable_state = torch.ones(edge_num, self._function_message_dim, dtype=torch.float32, device=self._device) / self._function_message_dim
-            function_state = 0.5 * torch.ones(edge_num, self._variable_message_dim, dtype=torch.float32, device=self._device)
+            variable_state = torch.ones(edge_num, self._function_message_dim, dtype=torch.float32,
+                                        device=self._device) / self._function_message_dim
+            function_state = 0.5 * torch.ones(edge_num, self._variable_message_dim, dtype=torch.float32,
+                                              device=self._device)
             function_state[:, 1] = 0
 
         return (variable_state, function_state)

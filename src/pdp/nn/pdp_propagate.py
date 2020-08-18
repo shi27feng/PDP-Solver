@@ -5,23 +5,28 @@ Define various propagators for the PDP framework.
 # Copyright (c) Microsoft. All rights reserved.
 # Licensed under the MIT license. See LICENSE.md file
 # in the project root for full license information.
+from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as fn
 
 from pdp.nn import util
 
 
 ###############################################################
-### The Propagator Classes
+#                  The Propagator Classes                     #
 ###############################################################
 
 
 class NeuralMessagePasser(nn.Module):
-    "Implements the neural propagator."
+    """Implements the neural propagator."""
 
-    def __init__(self, device, edge_dimension, decimator_dimension, meta_data_dimension, hidden_dimension, mem_hidden_dimension,
+    def _forward_unimplemented(self, *input: Any) -> None:
+        pass
+
+    def __init__(self, device, edge_dimension, decimator_dimension, meta_data_dimension, hidden_dimension,
+                 mem_hidden_dimension,
                  mem_agg_hidden_dimension, agg_hidden_dimension, dropout):
 
         super(NeuralMessagePasser, self).__init__()
@@ -29,12 +34,16 @@ class NeuralMessagePasser(nn.Module):
         self._module_list = nn.ModuleList()
         self._drop_out = dropout
 
-        self._variable_aggregator = util.MessageAggregator(device, decimator_dimension + edge_dimension + meta_data_dimension, 
-            hidden_dimension, mem_hidden_dimension,
-            mem_agg_hidden_dimension, agg_hidden_dimension, edge_dimension, include_self_message=False)
-        self._function_aggregator = util.MessageAggregator(device, decimator_dimension + edge_dimension + meta_data_dimension, 
-            hidden_dimension, mem_hidden_dimension,
-            mem_agg_hidden_dimension, agg_hidden_dimension, edge_dimension, include_self_message=False)
+        self._variable_aggregator = util.MessageAggregator(device,
+                                                           decimator_dimension + edge_dimension + meta_data_dimension,
+                                                           hidden_dimension, mem_hidden_dimension,
+                                                           mem_agg_hidden_dimension, agg_hidden_dimension,
+                                                           edge_dimension, include_self_message=False)
+        self._function_aggregator = util.MessageAggregator(device,
+                                                           decimator_dimension + edge_dimension + meta_data_dimension,
+                                                           hidden_dimension, mem_hidden_dimension,
+                                                           mem_agg_hidden_dimension, agg_hidden_dimension,
+                                                           edge_dimension, include_self_message=False)
 
         self._module_list.append(self._variable_aggregator)
         self._module_list.append(self._function_aggregator)
@@ -75,9 +84,10 @@ class NeuralMessagePasser(nn.Module):
             decimator_variable_state = torch.cat((decimator_variable_state, graph_feat), 1)
 
         function_state = mask * self._variable_aggregator(
-            decimator_variable_state, sat_problem._edge_feature, variable_mask, variable_mask_transpose, edge_mask) + (1 - mask) * function_state
+            decimator_variable_state, sat_problem._edge_feature, variable_mask, variable_mask_transpose, edge_mask) + (
+                                 1 - mask) * function_state
 
-        function_state = F.dropout(function_state, p=self._drop_out, training=is_training)
+        function_state = fn.dropout(function_state, p=self._drop_out, training=is_training)
 
         ## functions --> variables
         decimator_function_state = torch.cat((decimator_function_state, sat_problem._edge_feature), 1)
@@ -86,21 +96,25 @@ class NeuralMessagePasser(nn.Module):
             decimator_function_state = torch.cat((decimator_function_state, graph_feat), 1)
 
         variable_state = mask * self._function_aggregator(
-            decimator_function_state, sat_problem._edge_feature, function_mask, function_mask_transpose, edge_mask) + (1 - mask) * variable_state
+            decimator_function_state, sat_problem._edge_feature, function_mask, function_mask_transpose, edge_mask) + (
+                                 1 - mask) * variable_state
 
-        variable_state = F.dropout(variable_state, p=self._drop_out, training=is_training)
+        variable_state = fn.dropout(variable_state, p=self._drop_out, training=is_training)
 
         del mask
 
         return variable_state, function_state
 
-    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication):
+    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized,
+                       batch_replication):
 
         edge_num = graph_map.size(1) * batch_replication
 
         if randomized:
-            variable_state = 2.0*torch.rand(edge_num, self._hidden_dimension, dtype=torch.float32, device=self._device) - 1.0
-            function_state = 2.0*torch.rand(edge_num, self._hidden_dimension, dtype=torch.float32, device=self._device) - 1.0
+            variable_state = 2.0 * torch.rand(edge_num, self._hidden_dimension, dtype=torch.float32,
+                                              device=self._device) - 1.0
+            function_state = 2.0 * torch.rand(edge_num, self._hidden_dimension, dtype=torch.float32,
+                                              device=self._device) - 1.0
         else:
             variable_state = torch.zeros(edge_num, self._hidden_dimension, dtype=torch.float32, device=self._device)
             function_state = torch.zeros(edge_num, self._hidden_dimension, dtype=torch.float32, device=self._device)
@@ -112,7 +126,10 @@ class NeuralMessagePasser(nn.Module):
 
 
 class SurveyPropagator(nn.Module):
-    "Implements the Survey Propagator (SP)."
+    """Implements the Survey Propagator (SP)."""
+
+    def _forward_unimplemented(self, *input: Any) -> None:
+        pass
 
     def __init__(self, device, decimator_dimension, include_adaptors=False, pi=0.0):
 
@@ -158,10 +175,10 @@ class SurveyPropagator(nn.Module):
 
         variable_state, function_state = init_state
 
-        ## functions --> variables
+        # functions --> variables
 
         if self._include_adaptors:
-            decimator_variable_state = F.logsigmoid(self._function_input_projector(decimator_variable_state))
+            decimator_variable_state = fn.logsigmoid(self._function_input_projector(decimator_variable_state))
         else:
             decimator_variable_state = self.safe_log(decimator_variable_state[:, 0]).unsqueeze(1)
 
@@ -172,13 +189,14 @@ class SurveyPropagator(nn.Module):
         aggregated_variable_state = torch.mm(function_mask_transpose, aggregated_variable_state)
         aggregated_variable_state = aggregated_variable_state - decimator_variable_state
 
-        function_state = mask * self.safe_exp(aggregated_variable_state) + (1 - mask) * function_state[:, 0].unsqueeze(1)
+        function_state = mask * self.safe_exp(aggregated_variable_state) + (1 - mask) * function_state[:, 0].unsqueeze(
+            1)
 
-        ## functions --> variables
+        # functions --> variables
 
         if self._include_adaptors:
             decimator_function_state = self._variable_input_projector(decimator_function_state)
-            decimator_function_state[:, 0] = F.sigmoid(decimator_function_state[:, 0])
+            decimator_function_state[:, 0] = fn.sigmoid(decimator_function_state[:, 0])
             decimator_function_state[:, 1] = torch.sign(decimator_function_state[:, 1])
 
         external_force = decimator_function_state[:, 1].unsqueeze(1)
@@ -197,12 +215,13 @@ class SurveyPropagator(nn.Module):
         same_sign += self.safe_log(1.0 - self._pi * (external_force == sat_problem._edge_feature).float())
 
         opposite_sign = 0.5 * (1 - sat_problem._edge_feature) * pos + 0.5 * (1 + sat_problem._edge_feature) * neg
-        # The opposite sign edge aggregation does not include the current edge by definition, therefore no need for subtraction.
+        # The opposite sign edge aggregation does not include the current edge by definition, therefore no need for
+        # subtraction.
         opposite_sign += self.safe_log(1.0 - self._pi * (external_force == -sat_problem._edge_feature).float())
 
         dont_care = same_sign + opposite_sign
 
-        bias = 0 #(2 * dont_care) / 3.0
+        bias = 0  # (2 * dont_care) / 3.0
         same_sign = same_sign - bias
         opposite_sign = opposite_sign - bias
         dont_care = self.safe_exp(dont_care - bias)
@@ -220,7 +239,8 @@ class SurveyPropagator(nn.Module):
         del mask
         return variable_state, torch.cat((function_state, external_force), 1)
 
-    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized, batch_replication):
+    def get_init_state(self, graph_map, batch_variable_map, batch_function_map, edge_feature, graph_feat, randomized,
+                       batch_replication):
 
         edge_num = graph_map.size(1) * batch_replication
 
@@ -230,11 +250,12 @@ class SurveyPropagator(nn.Module):
             function_state = torch.rand(edge_num, self._variable_message_dim, dtype=torch.float32, device=self._device)
             function_state[:, 1] = 0
         else:
-            variable_state = torch.ones(edge_num, self._function_message_dim, dtype=torch.float32, device=self._device) / self._function_message_dim
-            function_state = 0.5 * torch.ones(edge_num, self._variable_message_dim, dtype=torch.float32, device=self._device)
+            variable_state = torch.ones(edge_num, self._function_message_dim, dtype=torch.float32,
+                                        device=self._device) / self._function_message_dim
+            function_state = 0.5 * torch.ones(edge_num, self._variable_message_dim, dtype=torch.float32,
+                                              device=self._device)
             function_state[:, 1] = 0
 
-        return (variable_state, function_state)
-
+        return variable_state, function_state
 
 ###############################################################

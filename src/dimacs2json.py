@@ -8,9 +8,8 @@ Auxiliary script for converting sets of DIMACS files into PDP's compact JSON for
 # Licensed under the MIT license. See LICENSE.md file
 # in the project root for full license information.
 
-import sys
 import argparse
-
+import sys
 from os import listdir
 from os.path import isfile, join, split, splitext
 
@@ -18,7 +17,7 @@ import numpy as np
 
 
 class CompactDimacs:
-    "Encapsulates a CNF file given in the DIMACS format."
+    """Encapsulates a CNF file given in the DIMACS format."""
 
     def __init__(self, dimacs_file, output, propagate):
 
@@ -88,7 +87,7 @@ class CompactDimacs:
 
         ind = np.nonzero(self._clause_mat)
         return [[var_num, clause_num], list((ind[1] + 1) * self._clause_mat[ind]),
-                 list(ind[0] + 1), self._output, [self.file_name]]
+                list(ind[0] + 1), self._output, [self.file_name]]
 
 
 def convert_directory(dimacs_dir, output_file, propagate, only_positive=False):
@@ -110,7 +109,7 @@ def convert_directory(dimacs_dir, output_file, propagate, only_positive=False):
             bc = CompactDimacs(file_list[i], label, propagate)
             f.write(str(bc.to_json()).replace("'", '"') + '\n')
             print("Generating JSON input file: %6.2f%% complete..." % (
-                (i + 1) * 100.0 / len(file_list)), end='\r', file=sys.stderr)
+                    (i + 1) * 100.0 / len(file_list)), end='\r', file=sys.stderr)
 
 
 def convert_file(file_name, output_file, propagate):
@@ -129,8 +128,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('in_dir', action='store', type=str)
     parser.add_argument('out_file', action='store', type=str)
-    parser.add_argument('-s', '--simplify', help='Propagate binary constraints', required=False, action='store_true', default=False)
-    parser.add_argument('-p', '--positive', help='Output only positive examples', required=False, action='store_true', default=False)
+    parser.add_argument('-s', '--simplify', help='Propagate binary constraints', required=False, action='store_true',
+                        default=False)
+    parser.add_argument('-p', '--positive', help='Output only positive examples', required=False, action='store_true',
+                        default=False)
     args = vars(parser.parse_args())
 
     convert_directory(args['in_dir'], args['out_file'], args['simplify'], args['positive'])
